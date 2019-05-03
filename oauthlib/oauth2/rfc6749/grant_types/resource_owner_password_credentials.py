@@ -27,7 +27,7 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
     viable.
 
     This grant type is suitable for clients capable of obtaining the
-    resource owner's credentials (username and password, typically using
+    resource owner's credentials (email and password, typically using
     an interactive form).  It is also used to migrate existing clients
     using direct authentication schemes such as HTTP Basic or Digest
     authentication to OAuth by converting the stored credentials to an
@@ -55,7 +55,7 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
 
     The flow illustrated in Figure 5 includes the following steps:
 
-    (A)  The resource owner provides the client with its username and
+    (A)  The resource owner provides the client with its email and
             password.
 
     (B)  The client requests an access token from the authorization
@@ -111,8 +111,8 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
 
         self.request_validator.save_token(token, request)
 
-        log.debug('Issuing token %r to client id %r (%r) and username %s.',
-                  token, request.client_id, request.client, request.username)
+        log.debug('Issuing token %r to client id %r (%r) and email %s.',
+                  token, request.client_id, request.client, request.email)
         return headers, json.dumps(token), 200
 
     def validate_token_request(self, request):
@@ -128,8 +128,8 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
         grant_type
                 REQUIRED.  Value MUST be set to "password".
 
-        username
-                REQUIRED.  The resource owner username.
+        email
+                REQUIRED.  The resource owner email.
 
         password
                 REQUIRED.  The resource owner password.
@@ -165,22 +165,23 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
         for validator in self.custom_validators.pre_token:
             validator(request)
 
-        for param in ('grant_type', 'username', 'password'):
+        for param in ('grant_type', 'email', 'password'):
             if not getattr(request, param, None):
                 raise errors.InvalidRequestError(
                     'Request is missing %s parameter.' % param, request=request)
 
-        for param in ('grant_type', 'username', 'password', 'scope'):
+        for param in ('grant_type', 'email', 'password', 'scope'):
             if param in request.duplicate_params:
-                raise errors.InvalidRequestError(description='Duplicate %s parameter.' % param, request=request)
+                raise errors.InvalidRequestError(
+                    description='Duplicate %s parameter.' % param, request=request)
 
         # This error should rarely (if ever) occur if requests are routed to
         # grant type handlers based on the grant_type parameter.
         if not request.grant_type == 'password':
             raise errors.UnsupportedGrantTypeError(request=request)
 
-        log.debug('Validating username %s.', request.username)
-        if not self.request_validator.validate_user(request.username,
+        log.debug('Validating email %s.', request.email)
+        if not self.request_validator.validate_user(request.email,
                                                     request.password, request.client, request):
             raise errors.InvalidGrantError(
                 'Invalid credentials given.', request=request)
