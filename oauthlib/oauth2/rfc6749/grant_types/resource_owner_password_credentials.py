@@ -165,14 +165,12 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
         for validator in self.custom_validators.pre_token:
             validator(request)
 
-        param_list = ('grant_type', 'email', 'password')
-        if UserModel.objects.filter(email=request.email).exists():
-            user = UserModel.objects.get(email=request.email)
-            if not user.has_usable_password():
-                param_list = ('grant_type', 'email')
-        else:
+        try:
+            param_list = self.request_validator.get_required_param_list(
+                request)
+        except:
             raise errors.InvalidRequestError(
-                'Email does not exist.', request=request)
+                'User with %s does not exist.' % request.email, request=request)
 
         for param in param_list:
             if not getattr(request, param, None):
