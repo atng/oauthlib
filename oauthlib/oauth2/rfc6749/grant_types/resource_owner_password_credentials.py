@@ -165,7 +165,16 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
         for validator in self.custom_validators.pre_token:
             validator(request)
 
-        for param in ('grant_type', 'email', 'password'):
+        param_list = ('grant_type', 'email', 'password')
+        if UserModel.objects.filter(email=request.email).exists():
+            user = UserModel.objects.get(email=request.email)
+            if not user.has_usable_password():
+                param_list = ('grant_type', 'email')
+        else:
+            raise errors.InvalidRequestError(
+                'Email does not exist.', request=request)
+
+        for param in param_list:
             if not getattr(request, param, None):
                 raise errors.InvalidRequestError(
                     'Request is missing %s parameter.' % param, request=request)
@@ -181,8 +190,11 @@ class ResourceOwnerPasswordCredentialsGrant(GrantTypeBase):
             raise errors.UnsupportedGrantTypeError(request=request)
 
         log.debug('Validating email %s.', request.email)
-        if not self.request_validator.validate_user(request.email,
-                                                    request.password, request.client, request):
+        password = None
+        if hasattr(request, 'password'):
+            password = request.password
+
+        if not self.request_validator.validate_user(request.client, request, request.email, password):
             raise errors.InvalidGrantError(
                 'Invalid credentials given.', request=request)
         else:
